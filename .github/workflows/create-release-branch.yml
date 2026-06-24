@@ -1,0 +1,173 @@
+name: 🚀 Create Release Branch
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Disparo manual via GitHub UI ou API.
+# Calcula a próxima versão semântica a partir da última tag vX.X.X,
+# aplica o bump escolhido, atualiza pyproject.toml e cria a branch release/vX.X.X.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Tipo de bump de versão"
+        required: true
+        default: minor
+        type: choice
+        options:
+          - patch   # vX.X.1  →  bug fixes
+          - minor   # vX.1.0  →  novas funcionalidades (retrocompat.)
+          - major   # v1.0.0  →  breaking changes
+
+      base_branch:
+        description: "Branch base para a release"
+        required: true
+        default: develop
+        type: string
+
+jobs:
+  create-release-branch:
+    name: "release/${{ inputs.bump_type }} ← ${{ inputs.base_branch }}"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # necessário para criar e fazer push da branch
+
+    steps:
+      # ── 1. Checkout com histórico completo para leitura das tags ──────────
+      - name: Checkout ${{ inputs.base_branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0          # histórico completo + todas as tags
+
+      # ── 2. Calcular próxima versão semântica ──────────────────────────────
+      - name: Calculate next semantic version
+        id: semver
+        run: |
+          # Busca a última tag no padrão vX.X.X (ignora pré-releases e outros)
+          LATEST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -n1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+            echo "ℹ️  Nenhuma tag semântica encontrada — iniciando de v0.0.0"
+          fi
+
+          echo "🏷️  Última tag: $LATEST_TAG"
+
+          # Extrai os componentes numéricos
+          VERSION="${LATEST_TAG#v}"
+          IFS='.' read -ra PARTS <<< "$VERSION"
+          MAJOR="${PARTS[0]:-0}"
+          MINOR="${PARTS[1]:-0}"
+          PATCH="${PARTS[2]:-0}"
+
+          # Aplica o bump escolhido (major reseta minor e patch; minor reseta patch)
+          case "${{ inputs.bump_type }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1));            PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1))                     ;;
+          esac
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          BRANCH_NAME="release/${NEW_VERSION}"
+          PLAIN_VERSION="${MAJOR}.${MINOR}.${PATCH}"   # sem "v" — para pyproject.toml
+
+          echo "✅ Nova versão : $NEW_VERSION"
+          echo "✅ Branch      : $BRANCH_NAME"
+
+          # Exporta para os próximos steps
+          {
+            echo "new_version=${NEW_VERSION}"
+            echo "branch_name=${BRANCH_NAME}"
+            echo "plain_version=${PLAIN_VERSION}"
+            echo "latest_tag=${LATEST_TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+      # ── 3. Garantir que a branch ainda não existe ─────────────────────────
+      - name: Verify branch does not already exist
+        run: |
+          BRANCH="${{ steps.semver.outputs.branch_name }}"
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
+            echo "::error::A branch '$BRANCH' já existe no repositório remoto."
+            echo "::error::Escolha outro bump_type ou remova a branch existente antes de continuar."
+            exit 1
+          fi
+          echo "✅ Branch '$BRANCH' disponível para criação."
+
+      # ── 4. Configurar identidade do bot para o commit ─────────────────────
+      - name: Configure Git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── 5. Criar a branch release localmente ─────────────────────────────
+      - name: Create release branch
+        run: |
+          git checkout -b "${{ steps.semver.outputs.branch_name }}"
+          echo "✅ Branch '${{ steps.semver.outputs.branch_name }}' criada."
+
+      # ── 6. Atualizar versão no pyproject.toml ─────────────────────────────
+      - name: Bump version in pyproject.toml
+        run: |
+          PLAIN="${{ steps.semver.outputs.plain_version }}"
+          # Substitui apenas a linha `version = "..."` no bloco [project]
+          sed -i "s/^version = \".*\"/version = \"${PLAIN}\"/" pyproject.toml
+
+          echo "📦 pyproject.toml após bump:"
+          grep "^version" pyproject.toml
+
+      # ── 7. Atualizar version.txt (lido pelo setup.py) ─────────────────────
+      - name: Update version.txt
+        run: |
+          PLAIN="${{ steps.semver.outputs.plain_version }}"
+          # Escreve APENAS o número limpo (sem 'v', sem newline extra)
+          # setup.py lê com f.read().strip(), então o formato deve ser: X.X.X
+          printf '%s' "${PLAIN}" > version.txt
+
+          echo "📄 version.txt atualizado:"
+          cat version.txt
+
+      # ── 8. Commit do bump de versão ───────────────────────────────────────
+      - name: Commit version bump
+        run: |
+          git add pyproject.toml version.txt
+          git commit -m "chore(release): bump version to ${{ steps.semver.outputs.new_version }}"
+
+      # ── 9. Push da branch para o remoto ──────────────────────────────────
+      - name: Push release branch
+        run: |
+          git push origin "${{ steps.semver.outputs.branch_name }}"
+          echo "✅ Branch '${{ steps.semver.outputs.branch_name }}' publicada no repositório remoto."
+
+      # ── 10. Resumo no GitHub Actions UI ───────────────────────────────────
+      - name: Job Summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            ICON="✅"
+          else
+            ICON="❌"
+          fi
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## ${ICON} Release Branch — ${{ steps.semver.outputs.new_version }}
+
+          | Campo            | Valor |
+          |------------------|-------|
+          | **Branch base**  | \`${{ inputs.base_branch }}\` |
+          | **Tipo de bump** | \`${{ inputs.bump_type }}\` |
+          | **Tag anterior** | \`${{ steps.semver.outputs.latest_tag }}\` |
+          | **Nova versão**  | \`${{ steps.semver.outputs.new_version }}\` |
+          | **Branch criada**| \`${{ steps.semver.outputs.branch_name }}\` |
+          | **Status**       | ${STATUS} |
+
+          ### Próximos passos
+          1. Faça os ajustes finais na branch \`${{ steps.semver.outputs.branch_name }}\`
+          2. Abra um **Pull Request** de \`${{ steps.semver.outputs.branch_name }}\` → \`main\`
+          3. Após merge, crie a tag \`${{ steps.semver.outputs.new_version }}\` na \`main\`
+          EOF
