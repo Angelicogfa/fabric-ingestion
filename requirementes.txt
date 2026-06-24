@@ -1,0 +1,16 @@
+# Dependências core para processamento Spark e Delta
+pyspark>=3.5.0
+delta-spark>=3.0.0
+semantic-link>=0.7.0
+
+# Dependências para integração com Azure Storage
+adlfs>=2024.2.0
+
+# Dependências para manipulação de dados e HTTP
+requests>=2.31.0
+pandas>=2.1.4
+tqdm>=4.66.0
+openpyxl>=3.1.0
+
+# Dependências para desenvolvimento local (gerenciar variáveis de ambiente)
+python-dotenv>=1.0.0
