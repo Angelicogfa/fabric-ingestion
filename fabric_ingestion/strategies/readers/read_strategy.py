@@ -19,7 +19,8 @@ class ReadStrategy(ABC):
           — lê qualquer dado no formato Delta Lake (com ``_delta_log/``).
         - :class:`~fabric_ingestion.strategies.readers.parquet_read_strategy.ParquetReadStrategy`
           — lê arquivos Parquet simples (sem ``_delta_log/``).
-        - :class:`~fabric_ingestion.strategies.readers.spark_format_read_strategy.SparkFormatReadStrategy`
+        - :class:`~fabric_ingestion.strategies.readers.spark_format_read_strategy\
+.SparkFormatReadStrategy`
           — lê qualquer formato suportado pelo Spark (csv, json, orc, avro…).
     """
 

@@ -1,0 +1,36 @@
+repos:
+  # ── Hooks básicos de qualidade ──────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace        # remove espaços no fim de linha
+      - id: end-of-file-fixer          # garante newline no final do arquivo
+      - id: check-yaml                 # valida sintaxe YAML
+      - id: check-json                 # valida sintaxe JSON
+      - id: check-toml                 # valida sintaxe TOML
+      - id: check-merge-conflict       # impede commit com marcadores de conflito
+      - id: debug-statements           # detecta breakpoint() e pdb.set_trace()
+      - id: check-added-large-files    # alerta sobre arquivos grandes (>500KB)
+        args: ["--maxkb=500"]
+
+  # ── Ruff: lint + format ─────────────────────────────────────────────────────
+  # Substitui: flake8, isort, pyupgrade — 10-100x mais rápido
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.10
+    hooks:
+      - id: ruff                       # lint com --fix automático
+        args: [--fix]
+      - id: ruff-format                # formatter (substitui black)
+
+  # ── Mypy: type checking ─────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-requests
+          - pyspark-stubs
+        args:
+          - --ignore-missing-imports   # PySpark/Delta não têm stubs completos
+          - --no-strict-optional       # evita falsos positivos em APIs do Spark
+        exclude: ^tests/               # testes têm mocks e fixtures que confundem mypy

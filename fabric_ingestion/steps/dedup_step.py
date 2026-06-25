@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from pyspark.sql import DataFrame
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F  # noqa: N812
 from pyspark.sql.window import Window
 
 from fabric_ingestion.base.pipeline_config import PipelineConfig

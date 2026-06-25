@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 
 from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql import types as T
+from pyspark.sql import functions as F  # noqa: N812
+from pyspark.sql import types as T  # noqa: N812
 
 
 class SchemaSanitizer:
@@ -37,16 +38,13 @@ class SchemaSanitizer:
         não existir ou não for uma tabela Delta.
         """
         self.logger.info(f"[Schema] Verificando destino: {destiny_path}")
-        try:
+        with contextlib.suppress(Exception):
             self.spark.catalog.refreshByPath(destiny_path)
-        except Exception:
-            pass  # Ignora: path pode ainda não existir
 
         if DeltaTable.isDeltaTable(self.spark, destiny_path):
             schema = self.spark.read.format("delta").load(destiny_path).schema
             self.logger.info(
-                f"[Schema] Tabela Delta encontrada. "
-                f"Colunas: {[f.name for f in schema.fields]}"
+                f"[Schema] Tabela Delta encontrada. Colunas: {[f.name for f in schema.fields]}"
             )
             return schema
 
@@ -63,9 +61,7 @@ class SchemaSanitizer:
         self.logger.info("[Schema] Iniciando sanitização de schema (case-insensitive).")
 
         target_field_map = (
-            {f.name.lower(): f for f in target_schema.fields}
-            if target_schema
-            else {}
+            {f.name.lower(): f for f in target_schema.fields} if target_schema else {}
         )
         source_fields_lower = {f.name.lower() for f in df_origin.schema.fields}
 
@@ -75,15 +71,13 @@ class SchemaSanitizer:
         ]
 
         # Colunas presentes no target mas ausentes no source
-        for target_field in (target_schema.fields if target_schema else []):
+        for target_field in target_schema.fields if target_schema else []:
             if target_field.name.lower() not in source_fields_lower:
                 self.logger.info(
                     f"[Schema] Coluna '{target_field.name}' ausente no source → "
                     f"adicionando como null ({target_field.dataType})."
                 )
-                select_expr.append(
-                    F.lit(None).cast(target_field.dataType).alias(target_field.name)
-                )
+                select_expr.append(F.lit(None).cast(target_field.dataType).alias(target_field.name))
 
         return df_origin.select(*select_expr)
 
@@ -94,20 +88,15 @@ class SchemaSanitizer:
         if source_field.dataType.typeName() == "null":
             target_type = target_field.dataType if target_field else T.StringType()
             self.logger.info(
-                f"[Schema] '{source_field.name}' é NullType no source → "
-                f"cast para {target_type}."
+                f"[Schema] '{source_field.name}' é NullType no source → cast para {target_type}."
             )
-            return (
-                F.col(source_field.name).cast(target_type).alias(source_field.name)
-            )
+            return F.col(source_field.name).cast(target_type).alias(source_field.name)
 
         if target_field and target_field.dataType.typeName() == "null":
             self.logger.warning(
                 f"[Schema] CRÍTICO: '{source_field.name}' é VOID no target. "
                 "Forçando cast NullType. Execute um FULL LOAD para corrigir!"
             )
-            return (
-                F.col(source_field.name).cast(T.NullType()).alias(source_field.name)
-            )
+            return F.col(source_field.name).cast(T.NullType()).alias(source_field.name)
 
         return F.col(source_field.name)

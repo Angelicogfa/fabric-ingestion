@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F  # noqa: N812
 
 from fabric_ingestion.base.pipeline_base import PipelineBase
 from fabric_ingestion.base.pipeline_config import PipelineConfig
@@ -57,7 +57,6 @@ class LakeToLakePipeline(PipelineBase):
             config=PipelineConfig(
                 origin_path="abfss://.../lakehouse_a/Tables/orders",
                 destiny_path="abfss://.../lakehouse_b/Tables/orders_curated",
-                full_load=False,
                 unique_columns=["order_id"],
                 date_column="updated_at",
             ),
@@ -78,7 +77,6 @@ class LakeToLakePipeline(PipelineBase):
             config=PipelineConfig(
                 origin_path="abfss://.../lakehouse_a/Files/raw/orders",
                 destiny_path="abfss://.../lakehouse_b/Tables/orders_refined",
-                full_load=True,
                 unique_columns=["order_id"],
                 partition_by=["year", "month"],
             ),
@@ -133,8 +131,7 @@ class LakeToLakePipeline(PipelineBase):
             DataFrame carregado, ou ``None`` se o path não existir.
         """
         self.logger.info(
-            f"[Load] Formato: {self.read_strategy.format_name.upper()} | "
-            f"Caminho: {path}"
+            f"[Load] Formato: {self.read_strategy.format_name.upper()} | Caminho: {path}"
         )
         try:
             return self.read_strategy.read(
@@ -158,17 +155,13 @@ class LakeToLakePipeline(PipelineBase):
         Subclasses podem chamar ``super().format_data(df)`` e aplicar
         transformações adicionais de negócio em seguida.
         """
-        self.logger.info(
-            "[Format] Normalizando colunas e adicionando _ingestion_timestamp."
-        )
+        self.logger.info("[Format] Normalizando colunas e adicionando _ingestion_timestamp.")
 
         # Normaliza nomes de colunas
         for col_name in df.columns:
             normalized = col_name.strip().lower().replace(" ", "_")
             if normalized != col_name:
-                self.logger.info(
-                    f"[Format] Renomeando: '{col_name}' → '{normalized}'"
-                )
+                self.logger.info(f"[Format] Renomeando: '{col_name}' → '{normalized}'")
                 df = df.withColumnRenamed(col_name, normalized)
 
         # Adiciona timestamp de controle de ingestão
@@ -176,9 +169,7 @@ class LakeToLakePipeline(PipelineBase):
 
         return df
 
-    def filter_data(
-        self, df: DataFrame, start_date: str | None, end_date: str
-    ) -> DataFrame:
+    def filter_data(self, df: DataFrame, start_date: str | None, end_date: str) -> DataFrame:
         """
         Filtra o DataFrame pelo intervalo ``[start_date, end_date]``
         com base em ``config.date_column``.
@@ -207,15 +198,11 @@ class LakeToLakePipeline(PipelineBase):
         )
 
         # Coluna auxiliar tipada para comparação segura (evita comparação de strings)
-        df = df.withColumn(
-            "__filter_date", F.to_date(F.col(date_col), date_fmt)
-        )
+        df = df.withColumn("__filter_date", F.to_date(F.col(date_col), date_fmt))
 
         df = df.filter(F.col("__filter_date") <= F.to_date(F.lit(end_date)))
 
         if start_date:
-            df = df.filter(
-                F.col("__filter_date") >= F.to_date(F.lit(start_date))
-            )
+            df = df.filter(F.col("__filter_date") >= F.to_date(F.lit(start_date)))
 
         return df.drop("__filter_date")

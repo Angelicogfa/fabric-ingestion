@@ -1,0 +1,20 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Dependências exclusivas de DESENVOLVIMENTO e TESTES.
+# NÃO incluídas no pacote publicado (setup.py / pyproject.toml).
+# Instalar com: pip install -r requirements-dev.txt
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Testes ────────────────────────────────────────────────────────────────────
+pytest>=8.2.0              # runner de testes
+pytest-cov>=5.0.0          # cobertura de código
+pytest-mock>=3.14.0        # mocking simplificado (mocker fixture)
+
+# ── Linting e formatação ──────────────────────────────────────────────────────
+ruff>=0.4.10               # linter + formatter (substitui flake8, isort, pyupgrade)
+mypy>=1.10.0               # type checking estático
+
+# ── Type stubs ────────────────────────────────────────────────────────────────
+types-requests>=2.31.0     # stubs para requests
+
+# ── Pre-commit ────────────────────────────────────────────────────────────────
+pre-commit>=3.7.0          # orquestrador de git hooks

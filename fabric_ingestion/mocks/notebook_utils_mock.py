@@ -43,9 +43,7 @@ class NotebookUtilsMock:
             Lança ``ValueError`` se a variável não estiver definida,
             com mensagem clara indicando qual variável deve ser configurada.
             """
-            env_var = (
-                f"{key_vault.upper()}_{secret_name.upper()}".replace("-", "_")
-            )
+            env_var = f"{key_vault.upper()}_{secret_name.upper()}".replace("-", "_")
             secret = os.getenv(env_var)
             if not secret:
                 raise ValueError(
