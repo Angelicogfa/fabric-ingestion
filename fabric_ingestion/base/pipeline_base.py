@@ -130,7 +130,7 @@ class PipelineBase(ABC):
             f"  Pipeline : {self.__class__.__name__}\n"
             f"  Origem   : {self.config.origin_path}\n"
             f"  Destino  : {self.config.destiny_path}\n"
-            f"  Modo     : {'FULL LOAD' if self.config.full_load else 'INCREMENTAL (MERGE)'}\n"
+            f"  Modo     : {self.write_strategy.__class__.__name__}\n"
             f"  Período  : {start_date or '(sem início)'} → {end_date}\n"
             + "=" * 52
         )

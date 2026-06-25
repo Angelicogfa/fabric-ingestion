@@ -57,7 +57,6 @@ class LakeToLakePipeline(PipelineBase):
             config=PipelineConfig(
                 origin_path="abfss://.../lakehouse_a/Tables/orders",
                 destiny_path="abfss://.../lakehouse_b/Tables/orders_curated",
-                full_load=False,
                 unique_columns=["order_id"],
                 date_column="updated_at",
             ),
@@ -78,7 +77,6 @@ class LakeToLakePipeline(PipelineBase):
             config=PipelineConfig(
                 origin_path="abfss://.../lakehouse_a/Files/raw/orders",
                 destiny_path="abfss://.../lakehouse_b/Tables/orders_refined",
-                full_load=True,
                 unique_columns=["order_id"],
                 partition_by=["year", "month"],
             ),
