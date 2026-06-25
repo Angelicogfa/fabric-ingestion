@@ -11,6 +11,7 @@ on:
     types: [closed]
     branches:
       - main
+      - master
 
 jobs:
   finalize-release:
