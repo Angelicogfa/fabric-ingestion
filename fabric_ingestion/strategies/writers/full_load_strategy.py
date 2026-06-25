@@ -33,7 +33,12 @@ class FullLoadStrategy(WriteStrategy):
     ) -> DataFrame:
         logger.info(f"[FullLoad] Iniciando overwrite em: {config.destiny_path}")
 
-        writer = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+        writer = (
+            df.write.format("delta")
+            .mode("overwrite")
+            .option("overwriteSchema", "true")
+            .option("partitionOverwriteMode", "static")
+        )
 
         if config.partition_by:
             logger.info(f"[FullLoad] Particionando por: {config.partition_by}")
