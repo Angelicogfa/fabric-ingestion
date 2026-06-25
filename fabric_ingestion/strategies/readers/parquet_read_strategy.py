@@ -85,8 +85,7 @@ class ParquetReadStrategy(ReadStrategy):
         )
 
         reader = (
-            spark.read
-            .format("parquet")
+            spark.read.format("parquet")
             .option("mergeSchema", str(self.merge_schema).lower())
             .option("recursiveFileLookup", str(self.recursive_file_lookup).lower())
         )

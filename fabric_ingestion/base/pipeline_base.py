@@ -60,9 +60,7 @@ class PipelineBase(ABC):
             try:
                 self.spark.conf.set(key, value)
             except Exception as exc:
-                self.logger.warning(
-                    f"[Config] Não foi possível definir '{key}={value}': {exc}"
-                )
+                self.logger.warning(f"[Config] Não foi possível definir '{key}={value}': {exc}")
 
     # ── Contrato de subclasses (steps do Template Method) ─────────────────
 
@@ -80,14 +78,12 @@ class PipelineBase(ABC):
         """Aplica transformações e ajustes de tipagem ao DataFrame."""
 
     @abstractmethod
-    def filter_data(
-        self, df: DataFrame, start_date: str | None, end_date: str
-    ) -> DataFrame:
+    def filter_data(self, df: DataFrame, start_date: str | None, end_date: str) -> DataFrame:
         """Filtra o DataFrame pelo período de interesse."""
 
     # ── Hooks opcionais ───────────────────────────────────────────────────
 
-    def on_before_load(self, **kwargs) -> None:
+    def on_before_load(self, **kwargs) -> None:  # noqa: B027
         """
         Hook executado antes de ``load_data``.
 
@@ -95,7 +91,7 @@ class PipelineBase(ABC):
         Implementação padrão é no-op.
         """
 
-    def on_after_save(self, df: DataFrame, **kwargs) -> None:
+    def on_after_save(self, df: DataFrame, **kwargs) -> None:  # noqa: B027
         """
         Hook executado após a persistência bem-sucedida.
 
@@ -131,17 +127,14 @@ class PipelineBase(ABC):
             f"  Origem   : {self.config.origin_path}\n"
             f"  Destino  : {self.config.destiny_path}\n"
             f"  Modo     : {self.write_strategy.__class__.__name__}\n"
-            f"  Período  : {start_date or '(sem início)'} → {end_date}\n"
-            + "=" * 52
+            f"  Período  : {start_date or '(sem início)'} → {end_date}\n" + "=" * 52
         )
 
         self.on_before_load(**kwargs)
 
         # ── 1. Carga ──────────────────────────────────────────────────────
         self.logger.info("[Step 1/4] Carregando dados da origem...")
-        df_loaded = self.load_data(
-            self.config.origin_path, **kwargs.get("load", {})
-        )
+        df_loaded = self.load_data(self.config.origin_path, **kwargs.get("load", {}))
         if df_loaded is None:
             self.logger.warning("Sem dados na origem. Pipeline encerrado.")
             return
@@ -161,9 +154,7 @@ class PipelineBase(ABC):
             self.logger.info(f"Registros após filtro: {count:,}")
 
             if count == 0:
-                self.logger.warning(
-                    "Sem dados após filtro de período. Pipeline encerrado."
-                )
+                self.logger.warning("Sem dados após filtro de período. Pipeline encerrado.")
                 return
 
             # ── 4. Deduplicação + Escrita ─────────────────────────────────

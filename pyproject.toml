@@ -22,3 +22,89 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["fabric_ingestion"]
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--tb=short",
+    "--strict-markers",
+    "-v",
+]
+markers = [
+    "unit: testes unitários isolados (sem I/O real)",
+    "integration: testes de integração com Delta local em diretório temporário",
+    "slow: testes que demoram mais de 10 segundos",
+]
+
+# ── Coverage ───────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["fabric_ingestion"]
+omit = [
+    "fabric_ingestion/mocks/*",   # mocks são utilitários, não lógica de negócio
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "pass$",
+]
+
+# ── Ruff ───────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+    ".venv",
+    ".git",
+    "__pycache__",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (imports não usados, variáveis indefinidas…)
+    "I",    # isort (ordenação de imports)
+    "UP",   # pyupgrade (moderniza sintaxe Python)
+    "B",    # bugbear (armadilhas comuns)
+    "SIM",  # simplify (simplificação de código)
+    "N",    # pep8 naming conventions
+]
+ignore = [
+    "N802",  # noqa: function name should be lowercase — espelha API Fabric (getSecret)
+    "B008",  # do not perform function calls in default arguments — dataclass field()
+    "SIM108", # ternary expression — às vezes o if/else é mais legível
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fabric_ingestion"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# ── Mypy ───────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = false  # PySpark stubs incompletos geram muitos falsos positivos
+ignore_missing_imports = true
+no_strict_optional = true    # Spark DataFrames são frequentemente Optional de forma implícita
+exclude = [
+    "tests/",
+    ".venv/",
+]

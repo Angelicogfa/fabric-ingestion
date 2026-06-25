@@ -85,7 +85,6 @@ class SparkFormatReadStrategy(ReadStrategy):
 
         df = reader.load(path)
         logger.info(
-            f"[Read:{self.source_format.upper()}] "
-            f"Schema: {[f.name for f in df.schema.fields]}"
+            f"[Read:{self.source_format.upper()}] Schema: {[f.name for f in df.schema.fields]}"
         )
         return df

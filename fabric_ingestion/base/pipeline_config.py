@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 _DEFAULT_SPARK_CONFIGS: dict[str, str] = {
     "spark.microsoft.delta.vorder.enabled": "true",
     "spark.microsoft.delta.optimizeWrite.enabled": "true",
@@ -46,6 +45,4 @@ class PipelineConfig:
     partition_by: list[str] | None = None
     date_column: str | None = None
     date_format: str = "yyyy-MM-dd"
-    spark_configs: dict[str, str] = field(
-        default_factory=lambda: dict(_DEFAULT_SPARK_CONFIGS)
-    )
+    spark_configs: dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_SPARK_CONFIGS))

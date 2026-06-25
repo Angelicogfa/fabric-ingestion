@@ -5,6 +5,7 @@ import logging
 from pyspark.sql import DataFrame, SparkSession
 
 from fabric_ingestion.base.pipeline_config import PipelineConfig
+
 from .write_strategy import WriteStrategy
 
 
@@ -32,12 +33,7 @@ class FullLoadStrategy(WriteStrategy):
     ) -> DataFrame:
         logger.info(f"[FullLoad] Iniciando overwrite em: {config.destiny_path}")
 
-        writer = (
-            df.write
-            .format("delta")
-            .mode("overwrite")
-            .option("overwriteSchema", "true")
-        )
+        writer = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
 
         if config.partition_by:
             logger.info(f"[FullLoad] Particionando por: {config.partition_by}")
