@@ -42,9 +42,11 @@ class MergeStrategy(WriteStrategy):
         # ── Destino não existe: cria via write inicial ─────────────────────
         if not target_exists:
             logger.info(
-                "[Merge] Tabela Delta de destino não encontrada. Realizando escrita inicial."
+                "[Merge] Tabela Delta de destino não encontrada. Realizando escrita inicial\n"
+                "(append)."
             )
-            writer = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+            writer = df.write.format("delta").mode("append")
+
             if config.partition_by:
                 writer = writer.partitionBy(*config.partition_by)
             writer.save(config.destiny_path)
