@@ -47,7 +47,7 @@ class FullLoadStrategy(WriteStrategy):
         except Exception as e:
             logger.warning(f"[FullLoad] Não foi possível apagar o diretório previamente: {e}")
 
-        writer = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+        writer = df.write.format("delta").mode("overwrite")
 
         if config.partition_by:
             logger.info(f"[FullLoad] Particionando por: {config.partition_by}")
