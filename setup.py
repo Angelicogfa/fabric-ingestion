@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Lê as dependências do arquivo requirements.txt
 with open("requirements.txt") as f:
@@ -6,9 +6,7 @@ with open("requirements.txt") as f:
 
 # Remove comentários e linhas vazias
 requirements = [
-    req.strip() 
-    for req in requirements 
-    if req.strip() and not req.strip().startswith("#")
+    req.strip() for req in requirements if req.strip() and not req.strip().startswith("#")
 ]
 
 with open("version.txt") as f:
@@ -25,9 +23,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Guilherme Fernando Angelico",
     author_email="guilherme.fernando@invillia.com",
-    packages=find_packages(
-        include=["fabric_ingestion", "fabric_ingestion.*"]
-    ),
+    packages=find_packages(include=["fabric_ingestion", "fabric_ingestion.*"]),
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",

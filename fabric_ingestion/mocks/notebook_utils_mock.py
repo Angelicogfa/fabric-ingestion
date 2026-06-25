@@ -52,7 +52,22 @@ class NotebookUtilsMock:
                 )
             return secret
 
+    class _FS:
+        @staticmethod
+        def rm(dir_path: str, recurse: bool = False) -> bool:
+            """
+            Mock para notebookutils.fs.rm
+            No ambiente local, não apaga o caminho físico por segurança.
+            Apenas simula sucesso.
+            """
+            print(
+                f"[NotebookUtilsMock] Simulação de exclusão (fs.rm) de '{dir_path}' \n"
+                f"(recurse={recurse})"
+            )
+            return True
+
     credentials = _Credentials()
+    fs = _FS()
 
 
 # Instância global — espelha a API do `notebookutils` do Microsoft Fabric
