@@ -33,12 +33,21 @@ class FullLoadStrategy(WriteStrategy):
     ) -> DataFrame:
         logger.info(f"[FullLoad] Iniciando overwrite em: {config.destiny_path}")
 
-        writer = (
-            df.write.format("delta")
-            .mode("overwrite")
-            .option("overwriteSchema", "true")
-            .option("partitionOverwriteMode", "static")
-        )
+        # Removemos o diretório de destino caso ele já exista para garantir
+        # que partições antigas não permaneçam (já que o histórico não é necessário).
+        try:
+            logger.info(f"[FullLoad] Apagando destino previamente: {config.destiny_path}")
+            try:
+                import notebookutils
+            except ImportError:
+                from fabric_ingestion.mocks.notebook_utils_mock import notebookutils
+
+            notebookutils.fs.rm(config.destiny_path, True)
+            logger.info("[FullLoad] ✓ Destino apagado com sucesso.")
+        except Exception as e:
+            logger.warning(f"[FullLoad] Não foi possível apagar o diretório previamente: {e}")
+
+        writer = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
 
         if config.partition_by:
             logger.info(f"[FullLoad] Particionando por: {config.partition_by}")

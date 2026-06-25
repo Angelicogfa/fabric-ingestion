@@ -1,6 +1,6 @@
 [project]
 name = "fabric-ingestion"
-version = "1.0.0"
+version = "1.0.1"
 description = "Framework de ingestão de dados para Microsoft Fabric (Lake-to-Lake, Template Method + Strategy)"
 readme = "README.md"
 requires-python = ">=3.10"
