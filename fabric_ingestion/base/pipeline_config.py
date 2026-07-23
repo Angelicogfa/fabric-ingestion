@@ -45,4 +45,5 @@ class PipelineConfig:
     partition_by: list[str] | None = None
     date_column: str | None = None
     date_format: str = "yyyy-MM-dd"
+    active_cdf: bool = False
     spark_configs: dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_SPARK_CONFIGS))
