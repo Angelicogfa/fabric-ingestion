@@ -45,18 +45,27 @@ class FullLoadStrategy(WriteStrategy):
             notebookutils.fs.rm(config.destiny_path, True)
             logger.info("[FullLoad] ✓ Destino apagado com sucesso.")
         except Exception:
-            logger.warning(
-                f"[FullLoad] Não foi possível apagar o diretório previamente: "
-                f"{config.destiny_path}"
-            )
+            pass
 
-        writer = df.write.format("delta").mode("overwrite")
+        writer = df.write.format("delta")
+
+        if config.active_cdf:
+            logger.info("[FullLoad] Habilitando Change Data Feed (CDF) no destino.")
+            writer = writer.option("delta.enableChangeDataFeed", "true")
 
         if config.partition_by:
             logger.info(f"[FullLoad] Particionando por: {config.partition_by}")
             writer = writer.partitionBy(*config.partition_by)
 
-        writer.save(config.destiny_path)
+        if config.cluster_by:
+            logger.info(f"[FullLoad] Clusterizando por: {config.cluster_by}")
+            writer = writer.clusterBy(*config.cluster_by)  # type: ignore[attr-defined]
+
+        writer = writer.mode("overwrite").option("overwriteSchema", "true")
+        if config.as_table:
+            writer.saveAsTable(config.destiny_path)
+        else:
+            writer.save(config.destiny_path)
 
         logger.info(f"[FullLoad] ✓ Concluído: {config.destiny_path}")
         return df
