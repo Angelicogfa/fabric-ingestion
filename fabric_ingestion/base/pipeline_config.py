@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _DEFAULT_SPARK_CONFIGS: dict[str, str] = {
     "spark.microsoft.delta.vorder.enabled": "true",
     "spark.microsoft.delta.optimizeWrite.enabled": "true",
+    "spark.microsoft.delta.autoCompact.enabled": "true",
     "spark.databricks.delta.schema.autoMerge.enabled": "true",
     "spark.sql.sources.partitionOverwriteMode": "dynamic",
 }
@@ -43,7 +44,18 @@ class PipelineConfig:
     destiny_path: str
     unique_columns: list[str] | None = None
     partition_by: list[str] | None = None
+    cluster_by: list[str] | None = None
     date_column: str | None = None
     date_format: str = "yyyy-MM-dd"
     active_cdf: bool = False
-    spark_configs: dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_SPARK_CONFIGS))
+    as_table: bool = False
+
+    v_order: bool | None = None
+    optimize_write: bool | None = None
+    auto_compact: bool | None = None
+    auto_merge_schema: bool | None = None
+    partition_overwrite_mode: str | None = None
+
+    spark_configs: dict[str, str] | None = (
+        None  # field(default_factory=lambda: dict(_DEFAULT_SPARK_CONFIGS))
+    )

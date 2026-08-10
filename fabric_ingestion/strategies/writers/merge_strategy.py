@@ -49,7 +49,14 @@ class MergeStrategy(WriteStrategy):
 
             if config.partition_by:
                 writer = writer.partitionBy(*config.partition_by)
-            writer.save(config.destiny_path)
+            if config.cluster_by:
+                writer = writer.clusterBy(*config.cluster_by)  # type: ignore[attr-defined]
+
+            if config.as_table:
+                writer.saveAsTable(config.destiny_path)
+            else:
+                writer.save(config.destiny_path)
+
             logger.info(f"[Merge] ✓ Tabela criada em: {config.destiny_path}")
             return df
 
