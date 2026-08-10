@@ -44,8 +44,11 @@ class FullLoadStrategy(WriteStrategy):
 
             notebookutils.fs.rm(config.destiny_path, True)
             logger.info("[FullLoad] ✓ Destino apagado com sucesso.")
-        except Exception as e:
-            logger.warning(f"[FullLoad] Não foi possível apagar o diretório previamente: {e}")
+        except Exception:
+            logger.warning(
+                f"[FullLoad] Não foi possível apagar o diretório previamente: "
+                f"{config.destiny_path}"
+            )
 
         writer = df.write.format("delta").mode("overwrite")
 
