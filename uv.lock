@@ -690,7 +690,7 @@ requires-dist = [
     { name = "delta-spark", specifier = ">=3.0.0" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "pandas", specifier = ">=2.1.4" },
-    { name = "pyspark", specifier = ">=3.5.0" },
+    { name = "pyspark", specifier = ">=4.1.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "semantic-link", specifier = ">=0.7.0" },

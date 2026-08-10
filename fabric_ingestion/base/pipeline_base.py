@@ -56,11 +56,36 @@ class PipelineBase(ABC):
 
     def _apply_spark_configs(self) -> None:
         """Aplica as configurações Spark definidas em :class:`PipelineConfig`."""
-        for key, value in self.config.spark_configs.items():
-            try:
-                self.spark.conf.set(key, value)
-            except Exception as exc:
-                self.logger.warning(f"[Config] Não foi possível definir '{key}={value}': {exc}")
+
+        if self.config.spark_configs:
+            for key, value in self.config.spark_configs.items():
+                try:
+                    self.spark.conf.set(key, value)
+                except Exception as exc:
+                    self.logger.warning(f"[Config] Não foi possível definir '{key}={value}': {exc}")
+
+        if self.config.v_order:
+            self.spark.conf.set(
+                "spark.microsoft.delta.vorder.enabled", str(self.config.v_order).lower()
+            )
+        if self.config.optimize_write:
+            self.spark.conf.set(
+                "spark.microsoft.delta.optimizeWrite.enabled",
+                str(self.config.optimize_write).lower(),
+            )
+        if self.config.auto_compact:
+            self.spark.conf.set(
+                "spark.microsoft.delta.autoCompact.enabled", str(self.config.auto_compact).lower()
+            )
+        if self.config.auto_merge_schema:
+            self.spark.conf.set(
+                "spark.databricks.delta.schema.autoMerge.enabled",
+                str(self.config.auto_merge_schema).lower(),
+            )
+        if self.config.partition_overwrite_mode:
+            self.spark.conf.set(
+                "spark.sql.sources.partitionOverwriteMode", self.config.partition_overwrite_mode
+            )
 
     # ── Contrato de subclasses (steps do Template Method) ─────────────────
 
@@ -96,6 +121,14 @@ class PipelineBase(ABC):
         Hook executado após a persistência bem-sucedida.
 
         Útil para notificações, atualização de catálogos ou limpeza.
+        Implementação padrão é no-op.
+        """
+
+    def on_optimize_data(self, df: DataFrame, config: PipelineConfig, **kwargs) -> None:  # noqa: B027
+        """
+        Hook executado após a escrita, caso a otimização esteja habilitada.
+
+        Útil para executar operações de otimização específicas do destino.
         Implementação padrão é no-op.
         """
 
