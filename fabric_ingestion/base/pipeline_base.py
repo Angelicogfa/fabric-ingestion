@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.types import StructType
 
 from fabric_ingestion.base.pipeline_config import PipelineConfig
 from fabric_ingestion.steps.dedup_step import DedupStep
@@ -170,6 +171,7 @@ class PipelineBase(ABC):
         df_loaded = self.load_data(self.config.origin_path, **kwargs.get("load", {}))
         if df_loaded is None:
             self.logger.warning("Sem dados na origem. Pipeline encerrado.")
+            self._ensure_destination_exists(df_schema=None, **kwargs)
             return
 
         # ── 2. Formatação ─────────────────────────────────────────────────
@@ -188,6 +190,7 @@ class PipelineBase(ABC):
 
             if count == 0:
                 self.logger.warning("Sem dados após filtro de período. Pipeline encerrado.")
+                self._ensure_destination_exists(df_schema=df_filtered.schema, **kwargs)
                 return
 
             # ── 4. Deduplicação + Escrita ─────────────────────────────────
@@ -208,3 +211,64 @@ class PipelineBase(ABC):
         finally:
             # Garante liberação de cache mesmo em caso de falha
             df_filtered.unpersist()
+
+    # ── Helpers internos ──────────────────────────────────────────────────
+
+    def _ensure_destination_exists(
+        self,
+        df_schema: StructType | None,
+        **kwargs,
+    ) -> None:
+        """
+        Garante que o destino Delta existe mesmo quando não há dados para escrever.
+
+        Chamado nos pontos de encerramento antecipado do Template Method para
+        evitar que pipelines subsequentes falhem ao tentar ler um destino que
+        nunca foi criado.
+
+        Comportamento
+        -------------
+        - **Destino já existe**: nenhuma ação é tomada.
+        - **Destino não existe + schema disponível**: cria um DataFrame vazio
+          com o schema fornecido e executa a :attr:`write_strategy`, garantindo
+          que a estrutura Delta (``_delta_log/`` + schema) seja criada.
+        - **Destino não existe + schema desconhecido** (``df_schema=None``,
+          ocorre quando ``load_data`` retorna ``None``): apenas loga um aviso
+          e encerra — sem schema de referência não é possível criar o destino.
+
+        Parâmetros
+        ----------
+        df_schema : StructType | None
+            Schema do DataFrame formatado, disponível quando o pipeline chegou
+            até a etapa de filtro. ``None`` quando a origem não carregou dados.
+        **kwargs
+            Argumentos extras repassados ao :meth:`WriteStrategy.execute`
+            (chave ``"write"`` é extraída, assim como no Template Method).
+        """
+        from delta.tables import DeltaTable
+
+        if DeltaTable.isDeltaTable(self.spark, self.config.destiny_path):
+            self.logger.info("[EnsureDestination] Destino já existe. Nenhuma ação necessária.")
+            return
+
+        if df_schema is None:
+            self.logger.warning(
+                "[EnsureDestination] Destino não existe e o schema da origem é desconhecido "
+                "(load_data retornou None). Não é possível criar o destino automaticamente."
+            )
+            return
+
+        self.logger.info(
+            "[EnsureDestination] Destino não encontrado. "
+            "Criando estrutura vazia para garantir disponibilidade do schema em "
+            f"pipelines subsequentes: {self.config.destiny_path}"
+        )
+        empty_df = self.spark.createDataFrame([], df_schema)
+        self.write_strategy.execute(
+            empty_df,
+            self.config,
+            self.spark,
+            self.logger,
+            **kwargs.get("write", {}),
+        )
+        self.logger.info("[EnsureDestination] ✓ Estrutura do destino criada com sucesso.")
