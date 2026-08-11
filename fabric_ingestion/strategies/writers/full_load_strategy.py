@@ -61,7 +61,7 @@ class FullLoadStrategy(WriteStrategy):
             logger.info(f"[FullLoad] Clusterizando por: {config.cluster_by}")
             writer = writer.clusterBy(*config.cluster_by)  # type: ignore[attr-defined]
 
-        writer = writer.mode("overwrite").option("overwriteSchema", "true")
+        writer = writer.mode("overwrite")
         if config.as_table:
             writer.saveAsTable(config.destiny_path)
         else:
