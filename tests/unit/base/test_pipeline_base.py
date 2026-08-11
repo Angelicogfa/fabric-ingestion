@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pyspark.sql import DataFrame, SparkSession
@@ -118,11 +118,75 @@ class TestEarlyReturn:
     def test_returns_early_when_filtered_df_is_empty(
         self, spark: SparkSession, config, mock_write_strategy
     ):
-        """DataFrame vazio após filtro → pipeline encerrado, write_strategy não chamado."""
+        """DataFrame vazio após filtro → pipeline encerrado, write_strategy não chamado
+        para dados reais (mas _ensure_destination_exists pode chamá-la)."""
         empty_df = spark.createDataFrame([], spark.createDataFrame([("x",)], ["id"]).schema)
         pipeline = ConcretePipeline(spark, config, mock_write_strategy, load_return=empty_df)
 
-        pipeline.execute(end_date="2024-12-31")
+        with patch("fabric_ingestion.base.pipeline_base.DeltaTable") as mock_delta_table_cls:
+            # Simula destino já existente para isolar o comportamento de early return
+            mock_delta_table_cls.isDeltaTable.return_value = True
+            pipeline.execute(end_date="2024-12-31")
+
+        mock_write_strategy.execute.assert_not_called()
+
+
+@pytest.mark.unit
+class TestEnsureDestinationExists:
+    """Garante que _ensure_destination_exists cria o destino quando necessário."""
+
+    def test_load_none_dest_not_exists_does_not_call_write(
+        self, spark: SparkSession, config, mock_write_strategy
+    ):
+        """load_data=None + destino inexistente → schema desconhecido, write não chamado."""
+        pipeline = ConcretePipeline(spark, config, mock_write_strategy, load_return=None)
+
+        with patch("fabric_ingestion.base.pipeline_base.DeltaTable") as mock_delta_table_cls:
+            mock_delta_table_cls.isDeltaTable.return_value = False
+            pipeline.execute(end_date="2024-12-31")
+
+        mock_write_strategy.execute.assert_not_called()
+
+    def test_load_none_dest_exists_does_not_call_write(
+        self, spark: SparkSession, config, mock_write_strategy
+    ):
+        """load_data=None + destino já existe → nenhuma ação, write não chamado."""
+        pipeline = ConcretePipeline(spark, config, mock_write_strategy, load_return=None)
+
+        with patch("fabric_ingestion.base.pipeline_base.DeltaTable") as mock_delta_table_cls:
+            mock_delta_table_cls.isDeltaTable.return_value = True
+            pipeline.execute(end_date="2024-12-31")
+
+        mock_write_strategy.execute.assert_not_called()
+
+    def test_empty_filtered_df_dest_not_exists_creates_destination(
+        self, spark: SparkSession, config, mock_write_strategy
+    ):
+        """count==0 + destino inexistente → write chamado com DataFrame vazio e schema correto."""
+        schema_df = spark.createDataFrame([("x",)], ["id"])
+        empty_df = spark.createDataFrame([], schema_df.schema)
+        pipeline = ConcretePipeline(spark, config, mock_write_strategy, load_return=empty_df)
+
+        with patch("fabric_ingestion.base.pipeline_base.DeltaTable") as mock_delta_table_cls:
+            mock_delta_table_cls.isDeltaTable.return_value = False
+            pipeline.execute(end_date="2024-12-31")
+
+        mock_write_strategy.execute.assert_called_once()
+        written_df: DataFrame = mock_write_strategy.execute.call_args[0][0]
+        assert written_df.schema == empty_df.schema
+        assert written_df.count() == 0
+
+    def test_empty_filtered_df_dest_exists_does_not_call_write(
+        self, spark: SparkSession, config, mock_write_strategy
+    ):
+        """count==0 + destino já existe → write não chamado (destino não precisa ser criado)."""
+        schema_df = spark.createDataFrame([("x",)], ["id"])
+        empty_df = spark.createDataFrame([], schema_df.schema)
+        pipeline = ConcretePipeline(spark, config, mock_write_strategy, load_return=empty_df)
+
+        with patch("fabric_ingestion.base.pipeline_base.DeltaTable") as mock_delta_table_cls:
+            mock_delta_table_cls.isDeltaTable.return_value = True
+            pipeline.execute(end_date="2024-12-31")
 
         mock_write_strategy.execute.assert_not_called()
 
